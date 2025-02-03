@@ -1,0 +1,87 @@
+Log Analysis Report - AWS USM Anywhere Sensor Disconnection
+Time Range: 01/21/2024 02:00:00 to 01/21/2024 05:00:00
+================================================================================
+Total files to analyze: 4
+
+
+File: log-analysis-script.ps1
+Size: 4.93 KB
+--------------------------------------------------------------------------------
+[No Timestamp] $outputFile = Join-Path $currentDir "sensor_disconnect_analysis.txt"
+[No Timestamp] # Extended keywords for connectivity issues
+[No Timestamp]     "disconnect",
+[No Timestamp]     "connection lost",
+[No Timestamp]     "connection refused",
+[No Timestamp]     "timeout",
+[No Timestamp]     "error",
+[No Timestamp]     "failed",
+[No Timestamp]     "failure",
+[No Timestamp]     "network",
+[No Timestamp]     "AWS",
+[No Timestamp]     "USM",
+[No Timestamp]     "sensor",
+[No Timestamp]     "offline",
+[No Timestamp]     "NetworkManager",
+[No Timestamp]     "connectivity",
+[No Timestamp]     "SSM",
+[No Timestamp]     "agent",
+[No Timestamp]     "critical",
+[No Timestamp]     "warning",
+[No Timestamp]     "unable to connect",
+[No Timestamp]     "connection terminated"
+[No Timestamp]     [System.IO.File]::WriteAllLines($outputFile, @("Log Analysis Report - AWS USM Anywhere Sensor Disconnection"), $utf8NoBOM)
+[No Timestamp]             $content = Get-Content $file.FullName -Encoding UTF8 -ErrorAction Stop
+[No Timestamp]             Write-Host "Error processing file $($file.Name): $_"
+[No Timestamp]             Add-Content -Path $outputFile -Value "Error processing file: $_"
+[No Timestamp]     Write-Host "A critical error occurred: $_"
+
+Matches found in this file: 27
+
+
+File: log-analysis-script.iml
+Size: 0.3 KB
+--------------------------------------------------------------------------------
+
+
+File: sensor_disconnect_analysis.txt
+Size: 0.19 KB
+--------------------------------------------------------------------------------
+[No Timestamp] Log Analysis Report - AWS USM Anywhere Sensor Disconnection
+[No Timestamp] [No Timestamp] $outputFile = Join-Path $currentDir "sensor_disconnect_analysis.txt"
+[No Timestamp] [No Timestamp] # Extended keywords for connectivity issues
+[No Timestamp] [No Timestamp]     "disconnect",
+[No Timestamp] [No Timestamp]     "connection lost",
+[No Timestamp] [No Timestamp]     "connection refused",
+[No Timestamp] [No Timestamp]     "timeout",
+[No Timestamp] [No Timestamp]     "error",
+[No Timestamp] [No Timestamp]     "failed",
+[No Timestamp] [No Timestamp]     "failure",
+[No Timestamp] [No Timestamp]     "network",
+[No Timestamp] [No Timestamp]     "AWS",
+[No Timestamp] [No Timestamp]     "USM",
+[No Timestamp] [No Timestamp]     "sensor",
+[No Timestamp] [No Timestamp]     "offline",
+[No Timestamp] [No Timestamp]     "NetworkManager",
+[No Timestamp] [No Timestamp]     "connectivity",
+[No Timestamp] [No Timestamp]     "SSM",
+[No Timestamp] [No Timestamp]     "agent",
+[No Timestamp] [No Timestamp]     "critical",
+[No Timestamp] [No Timestamp]     "warning",
+[No Timestamp] [No Timestamp]     "unable to connect",
+[No Timestamp] [No Timestamp]     "connection terminated"
+[No Timestamp] [No Timestamp]     [System.IO.File]::WriteAllLines($outputFile, @("Log Analysis Report - AWS USM Anywhere Sensor Disconnection"), $utf8NoBOM)
+[No Timestamp] [No Timestamp]             $content = Get-Content $file.FullName -Encoding UTF8 -ErrorAction Stop
+[No Timestamp] [No Timestamp]             Write-Host "Error processing file $($file.Name): $_"
+[No Timestamp] [No Timestamp]             Add-Content -Path $outputFile -Value "Error processing file: $_"
+[No Timestamp] [No Timestamp]     Write-Host "A critical error occurred: $_"
+
+Matches found in this file: 28
+
+
+File: .gitignore
+Size: 0.03 KB
+--------------------------------------------------------------------------------
+
+
+================================================================================
+Analysis Summary

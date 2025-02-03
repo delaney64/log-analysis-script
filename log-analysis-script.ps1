@@ -2,131 +2,133 @@
 $currentDir = Get-Location
 $outputFile = Join-Path $currentDir "sensor_disconnect_analysis.txt"
 
-Write-Host "Current directory: $currentDir"
-Write-Host "Output will be saved to: $outputFile"
+Write-Host "Starting log analysis in directory: $currentDir"
 
 # Define the time range we're interested in
 $startTime = Get-Date "2024-01-21 07:00:00Z"
 $endTime = Get-Date "2024-01-21 10:00:00Z"
 
-# Priority log files for sensor connectivity
-$priorityLogs = @(
-    "amazon-ssm-agent.log",
-    "alienvault-ngnex-error.log",
-    "syslog-ng-error.log",
-    "errors.log",
-    "alienvault_network_debug.log",
-    "alienvault_network_check.log",
-    "monitor.log",
-    "unimatrix.log",
-    "cloud-init-output.log"
-)
-
-# Extended keywords for AWS USM sensor issues
+# Extended keywords for connectivity issues
 $keywords = @(
     "disconnect",
     "connection lost",
     "connection refused",
     "timeout",
-    "network error",
+    "error",
+    "failed",
+    "failure",
+    "network",
     "AWS",
     "USM",
     "sensor",
     "offline",
-    "failed",
     "NetworkManager",
     "connectivity",
     "SSM",
-    "agent status"
+    "agent",
+    "critical",
+    "warning",
+    "unable to connect",
+    "connection terminated"
 )
 
 try {
-    # Create or clear the output file
-    "Log Analysis Report - AWS USM Anywhere Sensor Disconnection" | Out-File -FilePath $outputFile -Force
-    "Time Range: $startTime to $endTime" | Out-File -FilePath $outputFile -Append
-    "=" * 80 | Out-File -FilePath $outputFile -Append
+    # Initialize output file with UTF8 encoding
+    $utf8NoBOM = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllLines($outputFile, @("Log Analysis Report - AWS USM Anywhere Sensor Disconnection"), $utf8NoBOM)
+    Add-Content -Path $outputFile -Value "Time Range: $startTime to $endTime"
+    Add-Content -Path $outputFile -Value ("=" * 80)
 
-    # First process priority logs
-    Write-Host "Processing priority log files..."
-    foreach ($logName in $priorityLogs) {
-        $logPath = Join-Path $currentDir $logName
-        if (Test-Path $logPath) {
-            Write-Host "Found priority log: $logName"
-            "`nAnalyzing Priority Log: $logName" | Out-File -FilePath $outputFile -Append
-            "-" * 80 | Out-File -FilePath $outputFile -Append
-            
-            Get-Content $logPath | ForEach-Object {
-                $line = $_
+    # Get all files in the directory
+    $files = Get-ChildItem -Path $currentDir -File | Sort-Object Length -Descending
+
+    Write-Host "Found $($files.Count) files to analyze"
+    Add-Content -Path $outputFile -Value "Total files to analyze: $($files.Count)"
+
+    $processedFiles = 0
+    $matchingFiles = 0
+    $totalMatches = 0
+
+    foreach ($file in $files) {
+        $processedFiles++
+        $fileMatches = 0
+        $hasContent = $false
+
+        Write-Progress -Activity "Analyzing logs" -Status "$processedFiles of $($files.Count) files" -PercentComplete (($processedFiles / $files.Count) * 100)
+
+        Write-Host "Processing ($processedFiles/$($files.Count)): $($file.Name) - Size: $([math]::Round($file.Length/1KB, 2)) KB"
+
+        try {
+            # Try different encodings if needed
+            $content = Get-Content $file.FullName -Encoding UTF8 -ErrorAction Stop
+
+            Add-Content -Path $outputFile -Value "`n`nFile: $($file.Name)"
+            Add-Content -Path $outputFile -Value "Size: $([math]::Round($file.Length/1KB, 2)) KB"
+            Add-Content -Path $outputFile -Value ("-" * 80)
+
+            foreach ($line in $content) {
+                $foundMatch = $false
+
                 foreach ($keyword in $keywords) {
-                    if ($line -match $keyword) {
-                        if ($line -match '\[(.*?)\]' -or $line -match '\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}') {
+                    if ($line -match $keyword -and -not $foundMatch) {
+                        $foundMatch = $true
+                        $fileMatches++
+                        $totalMatches++
+                        $hasContent = $true
+
+                        # Try to extract timestamp
+                        $timestamp = "No Timestamp"
+                        if ($line -match '\[(.*?)\]') {
                             try {
                                 $timestamp = [DateTime]::Parse($matches[1])
-                                if ($timestamp -ge $startTime -and $timestamp -le $endTime) {
-                                    "[$timestamp] $line" | Out-File -FilePath $outputFile -Append
-                                }
-                            }
-                            catch {
-                                "[Timestamp Unknown] $line" | Out-File -FilePath $outputFile -Append
+                            } catch {
+                                # Keep default "No Timestamp" if parsing fails
                             }
                         }
-                        else {
-                            "[No Timestamp] $line" | Out-File -FilePath $outputFile -Append
+                        elseif ($line -match '\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}') {
+                            try {
+                                $timestamp = [DateTime]::Parse($matches[0])
+                            } catch {
+                                # Keep default "No Timestamp" if parsing fails
+                            }
+                        }
+
+                        # Only add lines within our time range or without timestamp
+                        if ($timestamp -eq "No Timestamp" -or
+                                ($timestamp -ge $startTime -and $timestamp -le $endTime)) {
+                            Add-Content -Path $outputFile -Value "[$timestamp] $line"
                         }
                     }
                 }
             }
-        }
-        else {
-            Write-Host "Priority log not found: $logName"
-        }
-    }
 
-    # Then process all remaining .log files
-    Write-Host "Processing remaining log files..."
-    Get-ChildItem -Path $currentDir -Filter "*.log" | Where-Object { $_.Name -notin $priorityLogs } | ForEach-Object {
-        $currentFile = $_
-        Write-Host "Processing: $($currentFile.Name)"
-        
-        "`nAnalyzing: $($currentFile.Name)" | Out-File -FilePath $outputFile -Append
-        "-" * 80 | Out-File -FilePath $outputFile -Append
-        
-        Get-Content $currentFile.FullName | ForEach-Object {
-            $line = $_
-            foreach ($keyword in $keywords) {
-                if ($line -match $keyword) {
-                    if ($line -match '\[(.*?)\]' -or $line -match '\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}') {
-                        try {
-                            $timestamp = [DateTime]::Parse($matches[1])
-                            if ($timestamp -ge $startTime -and $timestamp -le $endTime) {
-                                "[$timestamp] $line" | Out-File -FilePath $outputFile -Append
-                            }
-                        }
-                        catch {
-                            "[Timestamp Unknown] $line" | Out-File -FilePath $outputFile -Append
-                        }
-                    }
-                    else {
-                        "[No Timestamp] $line" | Out-File -FilePath $outputFile -Append
-                    }
-                }
+            if ($fileMatches -gt 0) {
+                $matchingFiles++
+                Add-Content -Path $outputFile -Value "`nMatches found in this file: $fileMatches"
             }
         }
+        catch {
+            Write-Host "Error processing file $($file.Name): $_"
+            Add-Content -Path $outputFile -Value "Error processing file: $_"
+        }
     }
 
-    # Add summary footer
-    "`n" + "=" * 80 | Out-File -FilePath $outputFile -Append
-    "Analysis completed at $(Get-Date)" | Out-File -FilePath $outputFile -Append
+    # Add summary
+    Add-Content -Path $outputFile -Value "`n`n$('=' * 80)"
+    Add-Content -Path $outputFile -Value "Analysis Summary"
+    Add-Content -Path $outputFile -Value "-" * 80
+    Add-Content -Path $outputFile -Value "Total files processed: $processedFiles"
+    Add-Content -Path $outputFile -Value "Files with matches: $matchingFiles"
+    Add-Content -Path $outputFile -Value "Total matches found: $totalMatches"
+    Add-Content -Path $outputFile -Value "Analysis completed at: $(Get-Date)"
 
-    if (Test-Path $outputFile) {
-        Write-Host "Analysis complete. Results have been saved to: $outputFile"
-        Write-Host "File size: $((Get-Item $outputFile).Length) bytes"
-    }
-    else {
-        Write-Host "Error: Output file was not created!"
-    }
+    Write-Host "`nAnalysis complete!"
+    Write-Host "Files processed: $processedFiles"
+    Write-Host "Files with matches: $matchingFiles"
+    Write-Host "Total matches found: $totalMatches"
+    Write-Host "Results saved to: $outputFile"
 }
 catch {
-    Write-Host "An error occurred: $_"
+    Write-Host "A critical error occurred: $_"
     Write-Host "Stack trace: $($_.ScriptStackTrace)"
 }
